@@ -1,15 +1,8 @@
 const child_process = require('child_process')
-const validate = require('./validate.js')
+const vld = require('./vld.js')
 const util = require('util')
-// import os.path
-// import subprocess
-// import json
-// import sys
 
-// def real_path(file):
-// return os.path.join(sys.path[0], file)
-
-function generate_grid(default_item, size) {
+function generateGrid(default_item, size) {
   const grid = []
   for (let x = 0; x < size[0]; x++) {
     grid[x] = []
@@ -20,29 +13,18 @@ function generate_grid(default_item, size) {
   return grid
 }
 
-// def assertm(bool_, message):
-// if !bool_:
-// 	raise Exception(message)
+function inGrid(coords) {
+  return (
+    coords[0] >= 0 &&
+    coords[0] < GRID_SIZE[0] &&
+    coords[1] >= 0 &&
+    coords[1] < GRID_SIZE[1]
+  )
+}
 
-// def verify_type(data, type_):
-// assertm(type(data) == type_, 'Invalid data format.')
-
-// def verify_in_grid(coords):
-// assertm(
-// 	(
-// 		coords[0] >= 0 and
-// 			coords[0] < GRID_SIZE[0] and
-// 			coords[1] >= 0 and
-// 			coords[1] < GRID_SIZE[1]
-// ),
-// 	'Coords "{}" not in grid'.format(coords)
-// 	)
-
-// def verify_key(dict_, key):
-// assertm(
-// 	key in dict_,
-// 	'Key "{}" not found'.format(key)
-// )
+function toCoords(string) {
+  return string.split(',').map(char => parseInt(char))
+}
 
 class Bot {
   constructor(language, file) {
@@ -63,18 +45,20 @@ class Bot {
 }
 
 
-GRID_SIZE = [10, 10]
+GRID_SIZE = [100, 100]
 UNIT_COMMANDS = {
   'soldier': ['move']
 }
 
-grid = generate_grid(
+grid = generateGrid(
   {
     type: 'plain',
-    id: '32a12',
   },
   GRID_SIZE,
 )
+grid[10][10] = {
+  unit: 'soldier',
+}
 // console.log(grid)
 bots = [
   new Bot('python', 'sample-bot.py'),
@@ -82,50 +66,46 @@ bots = [
 ]
 
 
-const validator = new validate.Validate({
+const validator = new vld.Validator({
   type: 'object',
   key: {
     type: 'string',
-    validate: coords => grid.reduce((acc, val) => (
-      val.reduce((acc, val) => (
-        acc || val.id === id
-      ), acc)
-    ), false)
+    regex: /^\d*,\d*$/g,
+    check: coords => inGrid(toCoords(coords))
   },
-  value: {
-    validate: command => {
-      const coords = command.split(',').map(char => parseInt(char))
-      command.unit = grid[coords[0]][coords[1]]
-      return command.unit in UNIT_COMMANDS &&
-             UNIT_COMMANDS[command.unit].includes(command.type)
-    },
-    oneOf: [
-      validate.exact({
-        type: ['move', 'attack'],
-        direction: ['left', 'right', 'up', 'down'],
-      }),
-    ]
+  value: [
+    vld.equal({
+      type: ['move', 'attack'],
+      direction: ['left', 'right', 'up', 'down'],
+    }),
+  ],
+  check: commands => {
+    let success = true
+    for (let key in commands) {
+      const command = commands[key]
+      const coords = toCoords(key)
+      command.unit = grid[coords[0]][coords[1]].unit
+      success = success &&
+        command.unit in UNIT_COMMANDS &&
+        UNIT_COMMANDS[command.unit].includes(command.type)
+    }
+    return success
   }
 })
 
-console.log(validator)
-
-// console.log(util.inspect(validator.template, false, null, true))
+console.log(util.inspect(validator.template, false, null, true))
 
 console.log(validator.validate({
-  '32a12': {
-    type: 'move',
-    direction: 'left',
-  }
+  '10,10': 1
 }))
 
 
-for (let i = 0; i < 10; i++) {
-	for (let bot of bots) {
-		commands = bot.run(grid)
+// for (let i = 0; i < 10; i++) {
+// 	for (let bot of bots) {
+// 		commands = bot.run(grid)
 
-    for (let id of commands) {
+//     for (let id of commands) {
 
-    }
-  }
-}
+//     }
+//   }
+// }
