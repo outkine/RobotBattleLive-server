@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "start": "parcel watch -t node src/index.js",
+    "serve": "nodemon dist/index.js"
+  },
+  "devDependencies": {
+    "babel-core": "^6.25.0",
+    "babel-preset-env": "^1.6.1"
+  },
+  "dependencies": {
+    "graphql-yoga": "^1.8.2"
+  }
+}
