@@ -1,36 +1,7 @@
-// function isDict(value) {
-// 	return typeof template === 'object' && Object.values(template).length !== 0
-// }
-
 class Validator {
 	constructor(template) {
-		// this.template = this.prepare(template)
 		this.template = template
 	}
-
-	// prepare(template, process=true) {
-	// 	let newTemplate
-	// 	if (template instanceof Array) {
-	// 		let result = template.map(val => this.prepare(val))
-	// 		if (process) {
-	// 			newTemplate = { oneOf: result }
-	// 		} else {
-	// 			newTemplate = result
-	// 		}
-	// 	} else if (isDict(value)) {
-	// 		newTemplate = {}
-	// 		for (let key in template) {
-	// 			newTemplate[key] = this.prepare(template[key], key !== 'equal')
-	// 		}
-	// 	} else {
-	// 		if (process) {
-	// 			newTemplate = { equal: template }
-	// 		} else {
-	// 			newTemplate = template
-	// 		}
-	// 	}
-	// 	return newTemplate
-	// }
 
 	validate(val, template=this.template) {
 		let success = true
@@ -65,7 +36,6 @@ class Validator {
 						success = success && template.check(val)
 						break
 					}
-
 					case 'value': {
 						let vals
 						if (val instanceof Array) {
@@ -127,7 +97,7 @@ function createNestedFunc(name) {
 
 module.exports = {
 	Validator,
-	...['equal', 'oneOf'].reduce((acc, val) => (
+	...['equal'].reduce((acc, val) => (
 		{ ...acc, [val]: createNestedFunc(val) }
 	), {})
 }
