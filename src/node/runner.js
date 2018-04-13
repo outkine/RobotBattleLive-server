@@ -4,6 +4,16 @@ const util = require('util')
 const path = require('path')
 const ctx = require('axel')
 
+function exitHandler(exit) {
+  ctx.cursor.on()
+}
+process.on('exit', exitHandler)
+process.on('SIGINT', exitHandler)
+process.on('SIGUSR1', exitHandler)
+process.on('SIGUSR2', exitHandler)
+process.on('uncaughtException', exitHandler)
+
+
 function pprint(data) {
   console.log(util.inspect(data, false, null, true))
 }
@@ -140,7 +150,6 @@ class Grid {
   }
 
   draw(ctx) {
-    ctx.bg(0, 0, 0)
     ctx.clear()
     for (let x = 0; x < this.size[0]; x++) {
       for (let y = 0; y < this.size[1]; y++) {
@@ -152,6 +161,7 @@ class Grid {
         }
       }
     }
+    ctx.bg(0, 0, 0)
   }
 }
 
@@ -250,7 +260,7 @@ function run() {
   }
   grid.draw(ctx)
   // setTimeout(run, 1000)
-  run()
+  // run()
 }
 
 run()
