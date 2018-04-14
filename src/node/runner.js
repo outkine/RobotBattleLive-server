@@ -6,6 +6,7 @@ const ctx = require('axel')
 
 function exitHandler(exit) {
   ctx.cursor.on()
+  process.exit()
 }
 process.on('exit', exitHandler)
 process.on('SIGINT', exitHandler)
@@ -42,20 +43,26 @@ class Bot {
     }
   }
 
-  run(data) {
-    const result = childProcess.spawnSync(this.command, [
+  start() {
+    this.process = childProcess.spawn(this.command, [
       realPath(this.file),
     ], {
-      input: JSON.stringify(data),
       stdio: 'pipe',
       encoding: 'utf8'
-    }).output
-    if (result[2]) {
-      // errprint(result[2])
-      throw new Error('Bot error!')
-    } else {
-      return JSON.parse(result[1])
-    }
+    })
+  }
+
+
+  run(data) {
+    return new Promise((resolve, reject) => {
+      this.process.stdin.write(JSON.stringify(data) + '\n')
+      this.process.stdout.once('data', (data) => {
+        resolve(JSON.parse(data.toString()))
+      })
+      this.process.stderr.once('data', (data) => {
+        reject(data)
+      })
+    })
   }
 }
 
@@ -196,6 +203,7 @@ const bots = [
   new Bot('python', 'sample-bot.py', 'red'),
 ]
 
+const DRAW = true
 ctx.cursor.off()
 
 const validator = new vld.Validator({
@@ -211,12 +219,19 @@ const validator = new vld.Validator({
   ],
 })
 
+for (let bot of bots) {
+  bot.start()
+}
 
-function run() {
+async function run() {
   for (let bot of bots) {
-    const commands = bot.run({ grid: grid.grid, units: grid.units, team: bot.team })
-    // pprint(commands)
-    // pprint(grid.units)
+    let commands
+    try {
+      commands = await bot.run({ grid: grid.grid, units: grid.units, team: bot.team })
+    } catch (e) {
+      throw e
+    }
+    pprint(commands)
     if (validator.validate(commands)) {
       for (let id in commands) {
         if (!grid.units[bot.team][id]) {
@@ -255,12 +270,16 @@ function run() {
         }
       }
     } else {
+      errprint('nooo ')
       throw new Error('Data format is wrong!')
     }
   }
-  grid.draw(ctx)
-  // setTimeout(run, 1000)
-  // run()
+  if (DRAW) {
+    grid.draw(ctx)
+    setTimeout(run, 100)
+  } else {
+    run()
+  }
 }
 
 run()

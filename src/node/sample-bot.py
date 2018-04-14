@@ -1,14 +1,13 @@
 import rbl
+import json
 
-data = rbl.load()
-
-
-action = {}
-team = data['units'][data['team']]
-for id in team:
-	action[id] = {
-		'type': 'move',
-		'direction': 'left'
-	}
-
-rbl.submit(action)
+@rbl.main
+def main(data):
+	action = {}
+	team = data['units'][data['team']]
+	for id in team:
+		action[id] = {
+			'type': 'move',
+			'direction': 'left'
+		}
+	return action
