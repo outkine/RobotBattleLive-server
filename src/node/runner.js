@@ -6,21 +6,48 @@ const ctx = require('axel')
 
 function exitHandler(exit) {
   ctx.cursor.on()
-  process.exit()
 }
 process.on('exit', exitHandler)
 process.on('SIGINT', exitHandler)
 process.on('SIGUSR1', exitHandler)
 process.on('SIGUSR2', exitHandler)
-process.on('uncaughtException', exitHandler)
 
 
 function pprint(data) {
   console.log(util.inspect(data, false, null, true))
 }
 
-function errprint(str) {
-  console.log('\x1b[33m%s\x1b[0m', str)
+function print(...data) {
+  console.log(...data)
+}
+
+function colorStr(str, color) {
+  return `\x1b[${color}m${str}\x1b[0m`
+}
+
+function colorStrings(color, strings) {
+  return strings.map(string => colorStr(string, color))
+}
+
+function colorPrint(color, ...strings) {
+  console.log(...colorStrings(color, strings))
+}
+
+const ERR_COLOR = '31'
+const INFO_COLOR = '32'
+
+function infoPrint(...strings) {
+  colorPrint(INFO_COLOR, ...strings)
+}
+
+function errPrint(...strings) {
+  console.error(...colorStrings(ERR_COLOR, strings))
+}
+
+
+function exit(e) {
+  errPrint(e.message)
+  process.exit(0)
 }
 
 function realPath(path_) {
@@ -50,17 +77,34 @@ class Bot {
       stdio: 'pipe',
       encoding: 'utf8'
     })
+    this.process.stdout.setMaxListeners(0)
+    this.process.stderr.setMaxListeners(0)
   }
 
 
   run(data) {
     return new Promise((resolve, reject) => {
       this.process.stdin.write(JSON.stringify(data) + '\n')
-      this.process.stdout.once('data', (data) => {
-        resolve(JSON.parse(data.toString()))
+      this.process.stdout.on('data', (data) => {
+        for (let string of data.toString().split('\n')) {
+          const split = string.split(';')
+          if (split[0] === 'ACTION') {
+            let result
+            try {
+              result = JSON.parse(split[1])
+            } catch (e) {
+              infoPrint(string)
+              continue
+            }
+            this.process.stdout.removeAllListeners('data')
+            resolve(result)
+          } else {
+            infoPrint(string)
+          }
+        }
       })
       this.process.stderr.once('data', (data) => {
-        reject(data)
+        reject(new Error(data.toString()))
       })
     })
   }
@@ -110,7 +154,6 @@ class Grid {
     const unit = this.getTile(oldCoords)
     this.grid[newCoords[0]][newCoords[1]] = unit
     this.setEmpty(oldCoords)
-    // console.log(unit)
     this.units[unit.team][unit.id] = newCoords
   }
 
@@ -169,6 +212,7 @@ class Grid {
       }
     }
     ctx.bg(0, 0, 0)
+    ctx.box(this.size[0], this.size[1], 1, 1)
   }
 }
 
@@ -203,7 +247,7 @@ const bots = [
   new Bot('python', 'sample-bot.py', 'red'),
 ]
 
-const DRAW = true
+const DRAW = false
 ctx.cursor.off()
 
 const validator = new vld.Validator({
@@ -229,9 +273,8 @@ async function run() {
     try {
       commands = await bot.run({ grid: grid.grid, units: grid.units, team: bot.team })
     } catch (e) {
-      throw e
+      exit(e)
     }
-    pprint(commands)
     if (validator.validate(commands)) {
       for (let id in commands) {
         if (!grid.units[bot.team][id]) {
@@ -251,7 +294,6 @@ async function run() {
           case 'move': {
             let newCoords = grid.applyDirection(coords, command.direction)
             if (grid.isEmpty(newCoords)) {
-              // console.log(newCoords)
               grid.moveUnit(coords, newCoords)
             }
             break
@@ -270,7 +312,6 @@ async function run() {
         }
       }
     } else {
-      errprint('nooo ')
       throw new Error('Data format is wrong!')
     }
   }
@@ -278,8 +319,8 @@ async function run() {
     grid.draw(ctx)
     setTimeout(run, 100)
   } else {
-    run()
+    run().catch(e => exit(e))
   }
 }
 
-run()
+run().catch(e => exit(e))

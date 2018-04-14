@@ -1,13 +1,7 @@
 import rbl
-import json
 
 @rbl.main
-def main(data):
-	action = {}
-	team = data['units'][data['team']]
-	for id in team:
-		action[id] = {
-			'type': 'move',
-			'direction': 'left'
-		}
-	return action
+def main(allies, enemies, grid, team):
+	print(1)
+	for soldier in allies:
+		soldier.move('left')
