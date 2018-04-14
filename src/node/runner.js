@@ -3,11 +3,22 @@ const vld = require('./vld.js')
 const util = require('util')
 const path = require('path')
 const ctx = require('axel')
+const Docker = require('dockerode')
+const stream = require('stream')
+
+const docker = new Docker()
+
 
 function exitHandler(exit) {
+  // for (let bot of bots) {
+  //   bot.container.stop()
+  // }
   ctx.cursor.on()
+  if (exit) {
+    process.exit()
+  }
 }
-process.on('exit', exitHandler)
+process.on('exit', () => exitHandler(false))
 process.on('SIGINT', exitHandler)
 process.on('SIGUSR1', exitHandler)
 process.on('SIGUSR2', exitHandler)
@@ -70,22 +81,42 @@ class Bot {
     }
   }
 
-  start() {
-    this.process = childProcess.spawn(this.command, [
-      realPath(this.file),
-    ], {
-      stdio: 'pipe',
-      encoding: 'utf8'
+  async start() {
+    this.container = await docker.createContainer({
+      Image: `${this.language}:slim`,
+      AttachStdin: true,
+      AttachStdout: true,
+      AttachStderr: true,
+      Binds: [`${__dirname}/scripts:/scripts`],
+      Tty: false,
+      Cmd: [this.command, '/scripts/' + this.file],
+      CapDrop: ['ALL'],
+      Privileged: false,
+      OpenStdin: true,
     })
-    this.process.stdout.setMaxListeners(0)
-    this.process.stderr.setMaxListeners(0)
-  }
 
+    this.stream = await this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true })
+    this.stdout = new stream.PassThrough()
+    this.stderr = new stream.PassThrough()
+    this.container.modem.demuxStream(this.stream, this.stdout, this.stder)
+
+
+    await this.container.start()
+
+    // this.process = childProcess.spawn(this.command, [
+    //   realPath(this.file),
+    // ], {
+    //   stdio: 'pipe',
+    //   encoding: 'utf8'
+    // })
+    // this.process.stdout.setMaxListeners(0)
+    // this.process.stderr.setMaxListeners(0)
+  }
 
   run(data) {
     return new Promise((resolve, reject) => {
-      this.process.stdin.write(JSON.stringify(data) + '\n')
-      this.process.stdout.on('data', (data) => {
+      this.stream.write(JSON.stringify(data) + '\n')
+      this.stdout.on('data', (data) => {
         for (let string of data.toString().split('\n')) {
           const split = string.split(';')
           if (split[0] === 'ACTION') {
@@ -96,14 +127,14 @@ class Bot {
               infoPrint(string)
               continue
             }
-            this.process.stdout.removeAllListeners('data')
+            this.stdout.removeAllListeners('data')
             resolve(result)
           } else {
             infoPrint(string)
           }
         }
       })
-      this.process.stderr.once('data', (data) => {
+      this.stderr.once('data', (data) => {
         reject(new Error(data.toString()))
       })
     })
@@ -216,7 +247,7 @@ class Grid {
   }
 }
 
-const GRID_SIZE = [50, 50]
+const GRID_SIZE = [5, 5]
 const UNIT_COMMANDS = {
   soldier: ['move']
 }
@@ -239,8 +270,8 @@ const grid = new Grid(GRID_SIZE, TILES, {
     soldier: [150, 122, 161]
   }
 })
-grid.createUnit('soldier', [10, 0], 'blue')
-grid.createUnit('soldier', [49, 49], 'red')
+grid.createUnit('soldier', [0, 0], 'blue')
+grid.createUnit('soldier', [4, 4], 'red')
 
 const bots = [
   new Bot('python', 'sample-bot.py', 'blue'),
@@ -263,64 +294,67 @@ const validator = new vld.Validator({
   ],
 })
 
-for (let bot of bots) {
-  bot.start()
-}
-
-async function run() {
+async function main() {
   for (let bot of bots) {
-    let commands
-    try {
-      commands = await bot.run({ grid: grid.grid, units: grid.units, team: bot.team })
-    } catch (e) {
-      exit(e)
-    }
-    if (validator.validate(commands)) {
-      for (let id in commands) {
-        if (!grid.units[bot.team][id]) {
-          throw new Error(`Invalid id "${id}"!`)
-        }
-        const coords = grid.getCoords(id, bot.team)
-        const command = commands[id]
-        const unit = grid.getTile(coords)
-        if (grid.isEmpty(coords)) {
-          throw new Error(`Coords "(${coords[0]}, ${coords[1]})" do not contain a unit!`)
-        }
-        if (!UNIT_COMMANDS[unit.unit].includes(command.type)) {
-          throw new Error(`Command "${command}" does not exist for unit "${unit.unit}"!`)
-        }
+    await bot.start()
+  }
 
-        switch (command.type) {
-          case 'move': {
-            let newCoords = grid.applyDirection(coords, command.direction)
-            if (grid.isEmpty(newCoords)) {
-              grid.moveUnit(coords, newCoords)
-            }
-            break
+  async function run() {
+    for (let bot of bots) {
+      let commands
+      try {
+        commands = await bot.run({ grid: grid.grid, units: grid.units, team: bot.team })
+      } catch (e) {
+        exit(e)
+      }
+      if (validator.validate(commands)) {
+        for (let id in commands) {
+          if (!grid.units[bot.team][id]) {
+            throw new Error(`Invalid id "${id}"!`)
           }
-          case 'attack': {
-            let newCoords = grid.applyDirection(coords, command.direction)
-            if (!grid.isEmpty(newCoords)) {
-              const target = grid.getTile(newCoords)
-              target.health -= 1
-              if (target.health === 0) {
-                grid.deleteUnit(newCoords)
+          const coords = grid.getCoords(id, bot.team)
+          const command = commands[id]
+          const unit = grid.getTile(coords)
+          if (grid.isEmpty(coords)) {
+            throw new Error(`Coords "(${coords[0]}, ${coords[1]})" do not contain a unit!`)
+          }
+          if (!UNIT_COMMANDS[unit.unit].includes(command.type)) {
+            throw new Error(`Command "${command}" does not exist for unit "${unit.unit}"!`)
+          }
+
+          switch (command.type) {
+            case 'move': {
+              let newCoords = grid.applyDirection(coords, command.direction)
+              if (grid.isEmpty(newCoords)) {
+                grid.moveUnit(coords, newCoords)
               }
+              break
             }
-            break
+            case 'attack': {
+              let newCoords = grid.applyDirection(coords, command.direction)
+              if (!grid.isEmpty(newCoords)) {
+                const target = grid.getTile(newCoords)
+                target.health -= 1
+                if (target.health === 0) {
+                  grid.deleteUnit(newCoords)
+                }
+              }
+              break
+            }
           }
         }
+      } else {
+        throw new Error('Data format is wrong!')
       }
+    }
+    if (DRAW) {
+      grid.draw(ctx)
+      setTimeout(run, 1000)
     } else {
-      throw new Error('Data format is wrong!')
+      run()
     }
   }
-  if (DRAW) {
-    grid.draw(ctx)
-    setTimeout(run, 100)
-  } else {
-    run().catch(e => exit(e))
-  }
+  run()
 }
 
-run().catch(e => exit(e))
+main().catch(e => errPrint(e))

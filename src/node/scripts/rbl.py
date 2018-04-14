@@ -57,6 +57,7 @@ def main(func):
 	if init_:
 		init_(data['grid'], data['team'])
 	while True:
+		print(1)
 		allies, enemies = process(data)
 		func(allies, enemies, data['grid'], data['team'])
 		submit(action_)
