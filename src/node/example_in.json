@@ -1,0 +1,112 @@
+{
+	"grid": [
+		[
+			{
+				"type": "unit",
+				"unit": "soldier",
+				"health": 10,
+				"id": "d97he4it3",
+				"team": "blue"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "unit",
+				"unit": "soldier",
+				"health": 10,
+				"id": "gtdlgkdxw",
+				"team": "red"
+			}
+		],
+		[
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			}
+		],
+		[
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			}
+		],
+		[
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			}
+		],
+		[
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			},
+			{
+				"type": "empty"
+			}
+		]
+	],
+	"units": {
+		"blue": {
+			"d97he4it3": [
+				0,
+				0
+			]
+		},
+		"red": {
+			"gtdlgkdxw": [
+				0,
+				4
+			]
+		}
+	},
+	"team": "blue"
+}

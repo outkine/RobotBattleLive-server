@@ -298,6 +298,7 @@ async function main() {
     for (let bot of bots) {
       let commands
       try {
+        console.log(JSON.stringify({ grid: grid.grid, units: grid.units, team: bot.team }))
         commands = await bot.run({ grid: grid.grid, units: grid.units, team: bot.team })
       } catch (e) {
         exit(e)
