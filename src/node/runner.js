@@ -9,16 +9,16 @@ const stream = require('stream')
 const docker = new Docker()
 
 
-function exitHandler(exit) {
-  // for (let bot of bots) {
-  //   bot.container.stop()
-  // }
+async function exitHandler(exit) {
+  for (let bot of bots) {
+    await bot.container.kill()
+  }
   ctx.cursor.on()
   if (exit) {
     process.exit()
   }
 }
-process.on('exit', () => exitHandler(false))
+process.on('exit', async () => exitHandler(false))
 process.on('SIGINT', exitHandler)
 process.on('SIGUSR1', exitHandler)
 process.on('SIGUSR2', exitHandler)
@@ -98,19 +98,12 @@ class Bot {
     this.stream = await this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true })
     this.stdout = new stream.PassThrough()
     this.stderr = new stream.PassThrough()
+    this.stdout.setMaxListeners(0)
+    this.stderr.setMaxListeners(0)
     this.container.modem.demuxStream(this.stream, this.stdout, this.stder)
 
 
     await this.container.start()
-
-    // this.process = childProcess.spawn(this.command, [
-    //   realPath(this.file),
-    // ], {
-    //   stdio: 'pipe',
-    //   encoding: 'utf8'
-    // })
-    // this.process.stdout.setMaxListeners(0)
-    // this.process.stderr.setMaxListeners(0)
   }
 
   run(data) {
@@ -279,7 +272,9 @@ const bots = [
 ]
 
 const DRAW = false
-ctx.cursor.off()
+if (DRAW) {
+  ctx.cursor.off()
+}
 
 const validator = new vld.Validator({
   type: 'object',

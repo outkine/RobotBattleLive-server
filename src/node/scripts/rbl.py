@@ -30,7 +30,7 @@ def load():
 	return json.loads(sys.stdin.readline())
 
 def submit(data):
-	sys.stdout.write('ACTION' + ';' + json.dumps(data))
+	sys.stdout.write('ACTION;' + json.dumps(data))
 	sys.stdout.flush()
 
 def process(data):
@@ -57,7 +57,6 @@ def main(func):
 	if init_:
 		init_(data['grid'], data['team'])
 	while True:
-		print(1)
 		allies, enemies = process(data)
 		func(allies, enemies, data['grid'], data['team'])
 		submit(action_)
