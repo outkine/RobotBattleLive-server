@@ -12,6 +12,7 @@ const docker = new Docker()
 async function exitHandler(exit) {
   for (let bot of bots) {
     await bot.container.kill()
+    await bot.container.remove()
   }
   ctx.cursor.on()
   if (exit) {
